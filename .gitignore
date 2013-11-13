@@ -1,0 +1,9 @@
+to
+*.tar.gz
+html/
+latex/
+*.d
+*.o
+*.cc
+*.swp
+VERSION.log

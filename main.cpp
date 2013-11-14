@@ -19,81 +19,70 @@
 
 #include "Initializer.h"
 #include "Options.h"
-#include "Foo.h"
 #include <iostream>
+#include <string>
+#include <cstring>
+#include <vector>
 
 int main(int argc, char** argv) {
     // Initialize
     // argcount, argvector, argument usage, description
-    Initializer init(argc, argv, "ARG0 ARG1",
-                     "A Barebones C++ Project\v"
-                     "Be sure to provide two non-option arguments!");
+    Initializer init(argc, argv, "[BOOKMARK...]",
+                     "Bookmark file system locations in POSIX-like systems\v"
+                     "Only one option allowed at a time");
 
     // Describe options
-    init.option("foo", 'f', "MYFOO", "Set MYFOO",
+    Project::action mode = Project::GO;
+    std::vector<std::string> bookmarks;
+    std::string path;
+    init.option("bookmark", 'b', "PATH", "Create bookmarks to current directory or PATH",
                 [&] (char* arg, Initializer::state* state) -> int {
-                    if(arg)
-                        Options::Instance()->set(Project::FOO,arg);
-                    return 0;
-                });
-    init.option("switch", 's', 0, "Set SWITCH = true",
-                [&] (char* arg, Initializer::state* state) -> int {
-                    Options::Instance()->set(Project::SWITCH,true);
-                    return 0;
-                });
-    init.option("loop", 'l', 0, "Run an infinite loop",
-                [&] (char* arg, Initializer::state* state) -> int {
-                    Options::Instance()->set(Project::LOOP,true);
-                    return 0;
-                });
-    init.option("crash", 'c', 0, "Cause a crash",
-                [&] (char* arg, Initializer::state* state) -> int {
-                    Options::Instance()->set(Project::CRASH,true);
-                    return 0;
-                });
-    init.option("num", 'n', "NUM", "Set MYNUM = NUM",
-                [&] (char* arg, Initializer::state* state) -> int {
-                    if(Options::Instance()->assign(Project::MYNUM,arg))
+                    if(mode != Project::GO)
+                        Initializer::error(state,"Too many modes: '%s'", arg);
+                    else
+                        mode = Project::CREATE;
+                    if(!arg)
                         return 0;
-                    else {
-                        Initializer::error(state,"Error converting '%s' to double", arg);
-                        return 1;
-                    }
+                    if(true) //TODO directory existence check
+                        path = arg;
+                    else
+                        Initializer::error(state,"Not a directory: '%s'", arg);
+                    return 0;
+                },1);
+    init.option("delete", 'd', 0, "Delete bookmarks",
+                [&] (char* arg, Initializer::state* state) -> int {
+                    if(mode != Project::GO)
+                        Initializer::error(state,"Too many modes: '%s'", arg);
+                    else
+                        mode = Project::DELETE;
+                    return 0;
+                });
+    init.option("print", 'p', 0, "Print bookmarks",
+                [&] (char* arg, Initializer::state* state) -> int {
+                    if(mode != Project::GO)
+                        Initializer::error(state,"Too many modes: '%s'", arg);
+                    else
+                        mode = Project::PRINT;
+                    return 0;
                 });
     init.event(Initializer::ARG, // Handle arguments
                [&] (char* arg, Initializer::state* state) -> int {
-                   if(state->arg_num >= 2)
-                       return Initializer::UNKNOWN;
-                   Options::Instance()->set(Project::ARGUMENTS,state->arg_num,arg);
+                   if(strchr(arg,'/'))
+                       Initializer::error(state,"Bookmark names may not contain '/': '%s'", arg);
+                   else
+                       bookmarks.push_back(arg);
                    return 0;
                });
-    init.event(Initializer::END, // Check argument count
+    init.event(Initializer::NO_ARGS, // Check argument count
                [&] (char* arg, Initializer::state* state) -> int {
-                   if(state->arg_num < 2)
-                       Initializer::usage(state);
-                   return 0;
+                   // TODO print bookmarks
+                   exit(0);
                });
 
     // Parse arguments
     init.parse();
 
     // run program
-
-    std::cout << "\nBegin Example:\n\n";
-
-    std::cout << Options::Instance()->get(Project::GREETING) << std::endl;
-    Foo foo;
-    foo.bar();
-
-    if(Options::Instance()->get(Project::CRASH)) {
-        int* i = new int(10);
-        delete i;
-        delete i;
-    }
-    if(Options::Instance()->get(Project::LOOP))
-        std::cout << "Looping indefinitely..." << std::endl;
-    while(Options::Instance()->get(Project::LOOP)) {
-    }
 
     return 0;
 }
